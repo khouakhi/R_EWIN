@@ -1,0 +1,333 @@
+---
+title: "EWIN R demo"
+author: "A.Khouakhi"
+output:
+  html_document:
+    highlight: haddock
+    theme: readable
+  pdf_document: default
+  word_document: default
+---
+
+In this exercise, we are going to learn: 
+
+1. How to create an R project
+2. How to install/load the required libraries
+3. How to import/read data to Rstudio
+4. Check the data (Summary statistics, variable names...)
+5. Use the dplyr package verbs to tidy up the data
+6. Summarise and aggregate the data
+7. Visualize the data using ggplot2
+
+
+To demonstrate and achieve the above objectives, We will be using 15-min flow data from the EA. The gauging station is located on river soar at Littlethorpe.
+
+Before starting if you don't have R and Rstudio installed in your machine, follow the links below to download R and Studio (install R first before installing Rstudio)
+
+* [R](https://cloud.r-project.org/) 
+* [Rstudio](https://www.rstudio.com/products/rstudio/download/#download) 
+
+
+
+### 1. Create an R project
+
+It is a good practice to create an R project before starting any R project, this allows you to:
+
+* keep a set of related data, analyses, and text self-contained in a single folder
+* use relative paths to files rather than absolute paths
+* Easily move your project around on your computer and share it with others 
+
+To create an R project, let's first create an empty folder named for example __my_Rproject__ (say in your Desktop) and then create 3 other sub-folders named _data_, _scripts_, and _plots_ within my_Rproject folder. Next, open Rstudio, from the main menu, go to file, new project, choose Existing Directory option and then browse to my_Rproject folder and click Create Project.
+<br>
+<br>
+<center>
+![](https://i.imgur.com/y7jb5bj.png){
+width=80% }
+</center>
+
+### 2. Data
+
+In R, you can either read the data from an online or local source, but for the purpose of this exercise, we will download flow data from [this link](https://www.dropbox.com/s/sdqyagbhm11glpo/Littlethorpe%204082%2015%20Minute%20Flow%201983%20to%202011.csv?dl=1) and place the it in the sub-folder _data_  
+
+
+### 3. Load the necessary libraries
+
+To install packages, two options are available:
+1. From the packages window in Rstudio then _install_ and type the package name 
+2. From the console, use the the function `install.packages()` for example `install.packages("tidyverse")` 
+
+Now install the following packages that we will be using: 
+
+`install.packages("tidyverse")`
+`install.packages("lubridate")`
+`install.packages("dygraphs")`
+`install.packages("glm2")`
+`install.packages("xts")`
+
+Next we will load these packages:
+
+```{r, eval=T, echo=T,include=T,warning= F, message=F,cache=FALSE}
+# load the libraries
+library(tidyverse)
+library(lubridate)
+library(dygraphs)
+library(glm2)
+library(xts)
+```
+
+
+### 4. Read the data
+
+The data contains some rows that we don't need so we will skip them using the `skip` argument from `read_csv()` function to skip the first 20 rows.
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+# First list files in the data folder
+files <- list.files("./data")
+files
+# Read the file and use skip argument
+flow <- read_csv("./data/Littlethorpe_4082.csv",skip = 20)
+```
+
+
+### 5. Variable names
+
+The variable names are a bit messy and need some adjustments. let's change them using the function `colnames()`
+
+```{r, eval=T, echo=T}
+
+# Change variable names 
+colnames(flow) <- c("time_stamp","flow","quality","interp","tags","comments")
+# print the flow
+flow
+```
+
+
+### 6. Summary statistics
+
+let's check how the data look like and get some descriptive statistics 
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+# get summary stat of data  
+summary(flow)                
+# or 
+glimpse(flow) 
+# data dimensions
+dim(flow) 
+# number of columns
+ncol(flow)
+# number of rows
+nrow(flow)
+```
+
+
+### 7. Check variables content
+
+For example, we are going to check the different comments of the variable `comment` using `unique` function to show unique elements
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+# Check the comments variable                 
+unique(flow$comments) 
+
+```
+
+### 8. date and time 
+
+From the summary results you can see the class of the variable time_stamp is a character so it needs to be changed to datetime class. But before doing that, let's try some examples of how you can use `lubridate` package to handle manipulate date times 
+
+```{r, eval=T, echo=T}
+## Examples of date time parsing:
+my_brthdy <- "13/5/1984 13;20-00"
+parsed_date <- dmy_hms(my_brthdy)
+parsed_date
+# extract year
+year(parsed_date)
+# extract month
+month(parsed_date)
+# extract day
+day(parsed_date)
+# extract minutes
+minute(parsed_date)
+# make a date
+make_datetime(c(1980))
+```
+
+### 9. Application to our data
+
+#### 9.1 `mutate` verb:
+
+Here we are going overwrite the column time_stamp using `mutate()` and we use `dmy_hms()` to parse the time stamp.
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+
+# first thing to do is to parse date time 
+# in order to do that we are going to use functions ymd() and the mutate()
+flow1 <- flow %>% mutate(time_stamp = dmy_hms(time_stamp))
+flow1
+```
+
+You can notice that the time_stamp variable class is changed to dttm
+
+#### 9.2 `Select()` verb to choose the relevent variables 
+
+For example let's say we wanted to keep just time_stamp,flow,quality,interp,tags variables. 
+You can either write the variable number or the variable name
+
+```{r, eval=T, echo=T}
+flow2 <- flow1 %>% select(time_stamp,flow,quality,interp,tags) 
+#print flow3
+flow2
+```
+
+
+#### 9.3 Extract year, month, day, and time from the the time_stamp variable
+
+```{r, eval=T, echo=T}
+# In order to subset the data for example annually we would need to separate the years from time_stamp
+
+flow3 <- flow2 %>% mutate(year = year(time_stamp),
+                            month = month(time_stamp),
+                            day = day(time_stamp),
+                            hour = hour(time_stamp),
+                            min = minute(time_stamp))
+# Print flow3 
+flow3
+```
+
+### 10. Check for missing data 
+
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+
+## check for NAs 
+# 1- check if yes or no there is missing data 
+anyNA(flow3$flow)
+# 2- check how many missing values
+sum(is.na(flow3$flow))
+# 3- locate the missing values 
+missed <- flow3 %>% filter(quality == "M")
+missed
+# or
+missed <- flow3 %>% filter(is.na(flow))
+missed
+```
+
+Now let's check the number of records each year and see how how complete our data is 
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+#Calculate the number of records each year 
+records <- flow3 %>% group_by(year) %>% tally()
+records
+```
+
+### 11. Summarizing the data
+
+To illustrate the use of `group_by()` and `summarize()` we can for example we can aggregate the data to hourly time stamp or computing the annual maximum flow 
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+# Aggregate the data to hourly/daily
+hflow <- flow3 %>% group_by(year,month,day,hour) %>% 
+                        summarize(flow = mean(flow, na.rm = TRUE), 
+                                  datetime = first(time_stamp))
+# print hflow
+hflow
+
+# Calculate the annual max flow
+am_flow <- flow3 %>% group_by(year) %>% 
+  summarize(am_flow = max(flow, na.rm = TRUE))
+am_flow
+
+# or for example Choosing the number of days where the flow exceeds the 99.5th percentile 
+# 1: find the Q99.5   
+Q995 <- quantile(hflow$flow, prob = 0.995, na.rm = T)
+
+# 2: values exceeding the Q995  
+Q995_flow <- hflow %>% filter(flow >= Q995)
+Q995_flow
+# 3 find the number of hours each year 
+exceedance <- Q995_flow %>% group_by(year) %>% 
+  summarise(events = n())
+exceedance
+# select just years where no values exceed the threshold (this example with show also how you can )
+non_exce <- hflow %>% ungroup(year, month, day) %>%
+  select(year) %>% distinct(year) %>%  
+  filter(!year %in% exceedance$year)
+# add 0 if no event  
+non_exce$events <- 0 
+exceedance <- full_join(exceedance,non_exce, by = c("year", "events")) %>% arrange(year)
+exceedance
+```
+
+### 12. Data visualization using ggplot2
+
+Let's for example select and plot flow measurements of the year 2000:
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+#1- plot one year of hourly data
+one_year <- hflow %>% filter(year == 2000 ) 
+# line plot 
+ggplot(data = one_year, aes(x = datetime, y = flow))+
+  geom_line(color="blue")
+# histogram
+ggplot(data = one_year, aes(x = flow))+
+  geom_histogram(fill = "blue")
+# box plot
+ggplot(data = one_year, aes(x = datetime, y = flow, group = month))+
+  geom_boxplot()
+
+```
+
+Now let's plot multi-plots using the ggplot's facet wrap function
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+# several plots 
+# Facet wrap (for several plots)
+multi_yr <- hflow %>% filter(year %in% 2000:2008 ) 
+# line graphs
+  ggplot(data = multi_yr, aes(x = datetime, y = flow))+
+  theme_bw()+
+  geom_line(color = "blue")+
+  facet_wrap(~year,scales = 'free_x')+
+  scale_x_datetime(date_labels = "%b")
+# histograms
+  ggplot(data = multi_yr, aes(x = flow))+
+    geom_histogram()+
+    facet_wrap(~year,scales = 'free_x')
+# Annual maximum flow + local polynomial regression fitting
+ggplot(am_flow, aes(x = year, y = am_flow))+
+  geom_line()+
+  geom_smooth(method = "loess", se = T, span = 0.30,color = "blue")
+```
+
+Or let's try some interactive plot using `dygraph` package 
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+# Interactive plots  
+hflow_ts <- as.xts(hflow,hflow$datetime)
+hflow_ts[,5] %>% dygraph %>% dyRangeSelector()
+```
+
+### 13. Examples of fitting a model to the high flow data and visualizing it 
+
+```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
+
+# simple linear model 
+mod1 <- lm(events ~ year, data =exceedance)
+#Poisson regression 
+mod2 <- glm2(events ~ year, data =exceedance,family="poisson")
+# mod2 summary
+summary(mod2)
+pred_y <- fitted(mod2)
+# plot all in one graphic 
+ggplot() + 
+  theme_bw() +
+  geom_point(data = exceedance, aes(x = year, y = events))+
+  geom_line(data = exceedance, aes(x = year, y = events))+
+  geom_smooth(data = exceedance, aes(x = year, y = events), 
+              method = "lm",color = "red")+
+  geom_smooth(data = exceedance, aes(x = year, y = events), 
+              method = "loess",span = 0.30,se=T,color = "blue")+
+  geom_line(data = exceedance, aes(x = year, y = pred_y), colour ="blue",size = 1)
+```
+
+
+
