@@ -15,12 +15,12 @@ In this exercise, we are going to learn:
 2. How to install/load the required libraries
 3. How to import/read data to Rstudio
 4. Check the data (Summary statistics, variable names...)
-5. Use the dplyr package verbs to tidy up the data
+5. Use the dplyr package verbs to manipulate data
 6. Summarise and aggregate the data
 7. Visualize the data using ggplot2
 
 
-To demonstrate and achieve the above objectives, We will be using 15-min flow data from the EA. The gauging station is located on river soar at Littlethorpe.
+To demonstrate and achieve the above objectives, we will be using 15-min flow data from the EA. The gauging station is located on river soar at Littlethorpe.
 
 Before starting if you don't have R and Rstudio installed in your machine, follow the links below to download R and Studio (install R first before installing Rstudio)
 
@@ -31,13 +31,14 @@ Before starting if you don't have R and Rstudio installed in your machine, follo
 
 ### 1. Create an R project
 
-It is a good practice to create an R project before starting any R project, this allows you to:
+It is a good practice to create an R project before starting any R related project, this allows you to:
 
-* keep a set of related data, analyses, and text self-contained in a single folder
-* use relative paths to files rather than absolute paths
+* Keep a set of related data, analyses, and text self-contained in a single folder
+* Use relative paths to files rather than absolute paths
 * Easily move your project around on your computer and share it with others 
 
-To create an R project, let's first create an empty folder named for example __my_Rproject__ (say in your Desktop) and then create 3 other sub-folders named _data_, _scripts_, and _plots_ within my_Rproject folder. Next, open Rstudio, from the main menu, go to file, new project, choose Existing Directory option and then browse to my_Rproject folder and click Create Project.
+To create an R project, let's first create an empty folder named for example __my_Rproject__ (say in your Desktop) and then create three other sub-folders named __data__, __scripts__, and __plots__ within __my_Rproject__ folder. Next, open Rstudio, from the main menu, go to file, new project, choose Existing Directory option and then browse to the created __my_Rproject__ folder and click Create Project.
+<br>
 <br>
 <br>
 <center>
@@ -47,16 +48,17 @@ width=80% }
 
 ### 2. Data
 
-In R, you can either read the data from an online or local source, but for the purpose of this exercise, we will download flow data from [this link](https://www.dropbox.com/s/sdqyagbhm11glpo/Littlethorpe%204082%2015%20Minute%20Flow%201983%20to%202011.csv?dl=1) and place the it in the sub-folder _data_  
+In general,R can either read the data from an online or local source, but for the purpose of this demo, we will download flow data from [this link](https://www.dropbox.com/s/sdqyagbhm11glpo/Littlethorpe%204082%2015%20Minute%20Flow%201983%20to%202011.csv?dl=1) and place it in the sub-folder __data__  
 
 
-### 3. Load the necessary libraries
+### 3. Install and load the necessary libraries
 
-To install packages, two options are available:
-1. From the packages window in Rstudio then _install_ and type the package name 
-2. From the console, use the the function `install.packages()` for example `install.packages("tidyverse")` 
+Did you say how? Well, to install packages, two main options are available:
 
-Now install the following packages that we will be using: 
+1. From the Packages window in Rstudio then __install__ and type the package name 
+2. From the console/code editor, use the the function `install.packages()` for example `install.packages("tidyverse")` 
+
+Ok! Now install the following packages needed for the rest of this demo: 
 
 `install.packages("tidyverse")`
 `install.packages("lubridate")`
@@ -64,10 +66,10 @@ Now install the following packages that we will be using:
 `install.packages("glm2")`
 `install.packages("xts")`
 
-Next we will load these packages:
+Next let's load these installed packages:
 
 ```{r, eval=T, echo=T,include=T,warning= F, message=F,cache=FALSE}
-# load the libraries
+# load the necessary libraries
 library(tidyverse)
 library(lubridate)
 library(dygraphs)
@@ -78,15 +80,15 @@ library(xts)
 
 ### 4. Read the data
 
-The data contains some rows that we don't need so we will skip them using the `skip` argument from `read_csv()` function to skip the first 20 rows.
+The data contains some rows (20) that we don't need (info related to the gaging station) so we will skip them using the `skip` argument from `read_csv()` function to skip the first 20 rows.
 
 
 ```{r message=FALSE, warning=FALSE, paged.print=FALSE}
-# First list files in the data folder
+# First list files in the data folder (we know in this case that we have just 1 file but just in case you have several files)
 files <- list.files("./data")
 files
-# Read the file and use skip argument
-flow <- read_csv("./data/Littlethorpe_4082.csv",skip = 20)
+# Read the file and use skip argument (notice that we use paste0 function to Concatenate 2 Strings)
+flow <- read_csv(paste0("./data/", files[1]), skip = 20)
 ```
 
 
@@ -98,7 +100,7 @@ The variable names are a bit messy and need some adjustments. let's change them 
 
 # Change variable names 
 colnames(flow) <- c("time_stamp","flow","quality","interp","tags","comments")
-# print the flow
+# print flow
 flow
 ```
 
@@ -120,10 +122,9 @@ ncol(flow)
 nrow(flow)
 ```
 
+### 7. Check a single column contents
 
-### 7. Check variables content
-
-For example, we are going to check the different comments of the variable `comment` using `unique` function to show unique elements
+For example, we are going to check the different comments of the variable `comment` using `unique()` function to show unique elements
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
 # Check the comments variable                 
@@ -131,9 +132,9 @@ unique(flow$comments)
 
 ```
 
-### 8. date and time 
+### 8. Date and time 
 
-From the summary results you can see the class of the variable time_stamp is a character so it needs to be changed to datetime class. But before doing that, let's try some examples of how you can use `lubridate` package to handle manipulate date times 
+From the summary results you can see that the class of the variable time_stamp is a character so it needs to be changed to datetime class. But before doing so, let's try some examples of how you can use some functions from `lubridate` package to parse datetimes 
 
 ```{r, eval=T, echo=T}
 ## Examples of date time parsing:
@@ -148,11 +149,9 @@ month(parsed_date)
 day(parsed_date)
 # extract minutes
 minute(parsed_date)
-# make a date
-make_datetime(c(1980))
 ```
 
-### 9. Application to our data
+### 9. Application for our data
 
 #### 9.1 `mutate` verb:
 
@@ -160,14 +159,14 @@ Here we are going overwrite the column time_stamp using `mutate()` and we use `d
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
 
 # first thing to do is to parse date time 
-# in order to do that we are going to use functions ymd() and the mutate()
+# in order to do that we are going to use functions dmy_hms() and the mutate() to overwrite the current date time variable
 flow1 <- flow %>% mutate(time_stamp = dmy_hms(time_stamp))
 flow1
 ```
 
 You can notice that the time_stamp variable class is changed to dttm
 
-#### 9.2 `Select()` verb to choose the relevent variables 
+#### 9.2 `Select()` verb to choose the relevant variables 
 
 For example let's say we wanted to keep just time_stamp,flow,quality,interp,tags variables. 
 You can either write the variable number or the variable name
@@ -178,11 +177,16 @@ flow2 <- flow1 %>% select(time_stamp,flow,quality,interp,tags)
 flow2
 ```
 
+Or we can just remove the the comments variable which give similar result.
+
+```{r, eval=T, echo=T}
+flow1 %>% select(-comments) 
+```
 
 #### 9.3 Extract year, month, day, and time from the the time_stamp variable
 
 ```{r, eval=T, echo=T}
-# In order to subset the data for example annually we would need to separate the years from time_stamp
+# In order to subset the data for example annually we would need to separate the year, month, day, hour from time_stamp
 
 flow3 <- flow2 %>% mutate(year = year(time_stamp),
                             month = month(time_stamp),
@@ -203,15 +207,15 @@ flow3
 anyNA(flow3$flow)
 # 2- check how many missing values
 sum(is.na(flow3$flow))
-# 3- locate the missing values 
+# 3- locate the missing values using the quality variable
 missed <- flow3 %>% filter(quality == "M")
 missed
-# or
+# or look for NAs
 missed <- flow3 %>% filter(is.na(flow))
 missed
 ```
 
-Now let's check the number of records each year and see how how complete our data is 
+Now let's check the number of records each year and see how complete our data is 
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
 #Calculate the number of records each year 
@@ -219,18 +223,19 @@ records <- flow3 %>% group_by(year) %>% tally()
 records
 ```
 
+You can see for example that the first 3 years are complete so you can choose to remove them
+
 ### 11. Summarizing the data
 
-To illustrate the use of `group_by()` and `summarize()` we can for example we can aggregate the data to hourly time stamp or computing the annual maximum flow 
+To illustrate the use of `group_by()` and `summarize()` we can for example aggregate the data to hourly time stamp or computing the annual maximum flow 
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
-# Aggregate the data to hourly/daily
+# Aggregate the data to hourly
 hflow <- flow3 %>% group_by(year,month,day,hour) %>% 
                         summarize(flow = mean(flow, na.rm = TRUE), 
                                   datetime = first(time_stamp))
 # print hflow
 hflow
-
 # Calculate the annual max flow
 am_flow <- flow3 %>% group_by(year) %>% 
   summarize(am_flow = max(flow, na.rm = TRUE))
@@ -262,7 +267,7 @@ exceedance
 Let's for example select and plot flow measurements of the year 2000:
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
-#1- plot one year of hourly data
+#1- subset data year 2000
 one_year <- hflow %>% filter(year == 2000 ) 
 # line plot 
 ggplot(data = one_year, aes(x = datetime, y = flow))+
@@ -276,15 +281,17 @@ ggplot(data = one_year, aes(x = datetime, y = flow, group = month))+
 
 ```
 
-Now let's plot multi-plots using the ggplot's facet wrap function
+ggplot2 is a powerful graphic package and contains plenty of functions and arguments that allow adjusting/customizing graphics
+
+Now let's plot multiple graphics using the ggplot's `facet_wrap()` function
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
-# several plots 
 # Facet wrap (for several plots)
-multi_yr <- hflow %>% filter(year %in% 2000:2008 ) 
+# select for example 8 years of data 
+  multi_yr <- hflow %>% filter(year %in% 2000:2008 ) 
 # line graphs
   ggplot(data = multi_yr, aes(x = datetime, y = flow))+
-  theme_bw()+
+  theme_bw()+ #simple theme
   geom_line(color = "blue")+
   facet_wrap(~year,scales = 'free_x')+
   scale_x_datetime(date_labels = "%b")
@@ -298,7 +305,7 @@ ggplot(am_flow, aes(x = year, y = am_flow))+
   geom_smooth(method = "loess", se = T, span = 0.30,color = "blue")
 ```
 
-Or let's try some interactive plot using `dygraph` package 
+Or let's try some interactive plot using `dygraph` package where you can zoom and hover over the graphic to see details.
 
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
 # Interactive plots  
@@ -308,16 +315,18 @@ hflow_ts[,5] %>% dygraph %>% dyRangeSelector()
 
 ### 13. Examples of fitting a model to the high flow data and visualizing it 
 
+It's not necessarily the right model to use for these data but it's just to illustrate how you can include model fits and other ggplot graphics.
+
 ```{r, eval=T, echo=T,warning= F, message=F,cache=FALSE}
 
-# simple linear model 
+#simple linear model 
 mod1 <- lm(events ~ year, data =exceedance)
 #Poisson regression 
 mod2 <- glm2(events ~ year, data =exceedance,family="poisson")
-# mod2 summary
+#mod2 summary
 summary(mod2)
 pred_y <- fitted(mod2)
-# plot all in one graphic 
+#plot all in one graphic 
 ggplot() + 
   theme_bw() +
   geom_point(data = exceedance, aes(x = year, y = events))+
@@ -326,7 +335,8 @@ ggplot() +
               method = "lm",color = "red")+
   geom_smooth(data = exceedance, aes(x = year, y = events), 
               method = "loess",span = 0.30,se=T,color = "blue")+
-  geom_line(data = exceedance, aes(x = year, y = pred_y), colour ="blue",size = 1)
+  geom_line(data = exceedance, aes(x = year, y = pred_y), 
+            colour ="blue",size = 1)
 ```
 
 
